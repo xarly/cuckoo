@@ -76,6 +76,60 @@ def browse():
     template = env.get_template("browse.html")
 
     return template.render({"rows" : tasks, "os" : os})
+    
+@route("/results")
+def results():
+    rows = db.list_tasks()
+
+    tasks = []
+    for row in rows:
+        task = {
+            "id" : row.id,
+            "target" : row.target,
+            "status" : row.status,
+            "added_on" : row.added_on,
+            "network" : False,
+            "dns" : False,
+            "irc" : False,
+            "http" : False,
+            "tcp" : False,
+            "udp" : False
+        }
+        if row.category == "file" && row.status == "success":
+            sample = db.view_sample(row.sample_id)
+            task["md5"] = sample.md5
+            
+            report_path = os.path.join(CUCKOO_ROOT, "storage", "analyses", str(task["id"]), "reports", "report.json")
+            if os.path.exists(report_path):
+                json_object = json.loads(open(report_path).read().decode('utf-8-sig'))
+                if json_object["network"]["tcp"]:
+                    task["tcp"] = True
+                    task["network"] = True
+                if json_object["network"]["udp"]:
+                    task["udp"] = True
+                    task["network"] = True
+                if json_object["network"]["http"]:
+                    task["http"] = True
+                    task["network"] = True
+                if json_object["network"]["dns"]:
+                    task["dns"] = True
+                    task["network"] = True
+                if  json_object["network"]["irc"]:
+                    task["irc"] = True
+                    task["network"] = True
+            else:
+                continue
+        else:
+            continue
+            
+        if task["network"] == True:
+            tasks.append(task)
+        else:
+            continue
+    
+    template = env.get_template("results.html")
+
+    return template.render({"rows" : tasks, "os" : os})
 
 @route("/static/<filename:path>")
 def server_static(filename):
